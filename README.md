@@ -1,30 +1,34 @@
-# Common REST Client Library
+# CommonLib - Spring Boot Microservices Utility Library
 
-A reusable Spring Boot library that simplifies calling remote REST services with **configurable resilience features** — **retry** and **circuit breaker**.
-Both are **optional**, meaning users can enable either, both, or none depending on their needs.
+`CommonLib` is a **Spring Boot library** designed to provide reusable components and configurations for microservices, including:
+
+- A **common REST client** for inter-service communication
+- **Optional retry** and **circuit breaker** mechanisms
+- Fine-grained error handling for remote calls
 
 ---
 
-## 🧱 Project Structure
+## **Version Requirements**
 
-```
-com/example/commonlib/
- ├─ config/
- │   ├─ RestClientProperties.java
- │   ├─ RetryProperties.java
- │   ├─ CircuitBreakerProperties.java
- │   ├─ CommonRestAutoConfiguration.java
- ├─ client/
- │   ├─ RetryExecutor.java
- │   ├─ CircuitBreaker.java
- │   └─ CommonRestClient.java
- ├─ exception/
- │   ├─ RemoteServiceException.java
- │   ├─ BadRequestException.java
- │   ├─ NotFoundException.java
- │   ├─ InternalServerErrorException.java
- └─ model/
-     └─ RemoteErrorResponse.java
+- **Java:** 17 or higher
+- **Spring Boot:** 3.2.0 or higher
+
+> ⚠️ Your project must meet these requirements to use `CommonLib` successfully.
+
+---
+
+## **Getting Started**
+
+### **1. Add Dependency**
+
+If published to Maven Central (example coordinates):
+
+```xml
+<dependency>
+    <groupId>com.example</groupId>
+    <artifactId>commonlib</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 ---

@@ -76,7 +76,9 @@ public class CommonRestClient {
                 return call.call();
             }
         } catch (Exception ex) {
-            recordCircuitBreakerFailure();
+            if (circuitBreaker != null) {
+                circuitBreaker.recordFailure();
+            }
             log.error("Error during call to URL: {}", url, ex);
 
             if (ex instanceof HttpStatusCodeException statusEx) {
@@ -95,12 +97,6 @@ public class CommonRestClient {
                             url
                     )
             );
-        }
-    }
-
-    private void recordCircuitBreakerFailure() {
-        if (circuitBreaker != null) {
-            circuitBreaker.recordFailure();
         }
     }
 
