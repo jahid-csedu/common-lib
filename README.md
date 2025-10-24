@@ -31,7 +31,7 @@ com/example/commonlib/
 
 ## ⚙️ Configuration
 
-All configuration is provided via Spring Boot’s `application.yml` (or `.properties`) under the prefix `common.rest`.
+All configuration is provided via Spring Boot’s `application.yml` (or `.properties`) under the prefix `rest.client`.
 
 ### Example Configuration
 
@@ -57,22 +57,22 @@ rest:
 ### Configuration Notes
 
 | Property             | Description                                                          | Default             |
-| -------------------- | -------------------------------------------------------------------- | ------------------- |
+|----------------------| -------------------------------------------------------------------- | ------------------- |
 | `connection-timeout` | Connection timeout in ms                                             | 5000                |
 | `read-timeout`       | Read timeout in ms                                                   | 5000                |
-| `retry-properties`   | Optional retry config (enables retry if present)                     | Disabled if not set |
+| `retry`              | Optional retry config (enables retry if present)                     | Disabled if not set |
 | `circuit-breaker`    | Optional circuit breaker config (enables circuit breaker if present) | Disabled if not set |
 
 ---
 
 ## 🪄 Behavior Matrix
 
-| Configured Components   | Behavior                                                        |
-| ----------------------- | --------------------------------------------------------------- |
-| Only `retry-properties` | Retries failed requests with exponential backoff                |
-| Only `circuit-breaker`  | Skips requests if the circuit is open                           |
-| Both                    | Retries requests, and trips circuit breaker on repeated failure |
-| None                    | Performs a direct REST call with no resilience logic            |
+| Configured Components  | Behavior                                                        |
+|------------------------| --------------------------------------------------------------- |
+| Only `retry`           | Retries failed requests with exponential backoff                |
+| Only `circuit-breaker` | Skips requests if the circuit is open                           |
+| Both                   | Retries requests, and trips circuit breaker on repeated failure |
+| None                   | Performs a direct REST call with no resilience logic            |
 
 ---
 
