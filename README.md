@@ -1,39 +1,11 @@
-# 🧰 Common REST Client Library
+# Common REST Client Library
 
-A lightweight, reusable **Spring Boot library** that provides resilient REST API communication features for microservices.
-It centralizes commonly used configurations like **timeouts**, **retries with exponential backoff and jitter**, and **circuit breaker** handling — so that all your microservices can use the same consistent and robust setup.
-
----
-
-## 🚀 Features
-
-✅ **Centralized Configuration**
-
-* Define timeout, retry, and circuit breaker settings in `application.yml`
-* Automatically bound via `@ConfigurationProperties`
-
-✅ **Retry with Exponential Backoff and Jitter**
-
-* Retries failed requests with a growing delay between attempts
-* Adds jitter (random variation) to avoid thundering herd issues
-
-✅ **Circuit Breaker**
-
-* Opens the circuit after a configurable number of consecutive failures
-* Automatically transitions from `OPEN → HALF_OPEN → CLOSED` based on elapsed time
-
-✅ **Fine-Grained Error Handling**
-
-* Converts remote API error responses into structured `RemoteErrorResponse` objects
-* Throws meaningful exceptions like `BadRequestException`, `NotFoundException`, and `InternalServerErrorException`
-
-✅ **Logging**
-
-* Logs all retry attempts, circuit breaker state changes, and remote call failures
+A reusable Spring Boot library that simplifies calling remote REST services with **configurable resilience features** — **retry** and **circuit breaker**.
+Both are **optional**, meaning users can enable either, both, or none depending on their needs.
 
 ---
 
-## 🏗️ Project Structure
+## 🧱 Project Structure
 
 ```
 com/example/commonlib/
@@ -44,7 +16,8 @@ com/example/commonlib/
  │   ├─ CommonRestAutoConfiguration.java
  ├─ client/
  │   ├─ RetryExecutor.java
- │   ├─ CommonRestClient.java
+ │   ├─ CircuitBreaker.java
+ │   └─ CommonRestClient.java
  ├─ exception/
  │   ├─ RemoteServiceException.java
  │   ├─ BadRequestException.java
@@ -58,123 +31,120 @@ com/example/commonlib/
 
 ## ⚙️ Configuration
 
-Add the following properties to your **microservice’s** `application.yml` (or override them as needed):
+All configuration is provided via Spring Boot’s `application.yml` (or `.properties`) under the prefix `common.rest`.
+
+### Example Configuration
 
 ```yaml
-common:
-  rest:
-    connection-timeout: 5000      # in milliseconds
-    read-timeout: 5000            # in milliseconds
+rest:
+  client:
+    connection-timeout: 2000   # Connection timeout in milliseconds
+    read-timeout: 2000         # Read timeout in milliseconds
 
-    retry-properties:
-      max-attempts: 3             # number of retry attempts
-      base-delay-ms: 200          # base delay in milliseconds
-      max-delay-ms: 2000          # maximum delay cap in milliseconds
-      jitter-factor: 0.2          # ±20% random variation
+    # Optional Retry Configuration
+    retry:
+      max-attempts: 3
+      base-delay-ms: 200
+      max-delay-ms: 2000
+      jitter-factor: 0.2
 
-    circuit-breaker-properties:
-      failure-threshold: 5        # failures before circuit opens
-      open-state-duration: 30     # open state duration in seconds
+    # Optional Circuit Breaker Configuration
+    circuit-breaker:
+      failure-threshold: 5
+      open-duration-ms: 30000
 ```
 
-All values are optional — the library provides sensible defaults.
+### Configuration Notes
+
+| Property             | Description                                                          | Default             |
+| -------------------- | -------------------------------------------------------------------- | ------------------- |
+| `connection-timeout` | Connection timeout in ms                                             | 5000                |
+| `read-timeout`       | Read timeout in ms                                                   | 5000                |
+| `retry-properties`   | Optional retry config (enables retry if present)                     | Disabled if not set |
+| `circuit-breaker`    | Optional circuit breaker config (enables circuit breaker if present) | Disabled if not set |
 
 ---
 
-## 🧩 Usage in a Microservice
+## 🪄 Behavior Matrix
 
-Once the library is added as a Maven dependency (see below), you can inject and use `CommonRestClient` in any Spring component.
+| Configured Components   | Behavior                                                        |
+| ----------------------- | --------------------------------------------------------------- |
+| Only `retry-properties` | Retries failed requests with exponential backoff                |
+| Only `circuit-breaker`  | Skips requests if the circuit is open                           |
+| Both                    | Retries requests, and trips circuit breaker on repeated failure |
+| None                    | Performs a direct REST call with no resilience logic            |
 
-### Example:
+---
+
+## 🧩 Usage Example
 
 ```java
+import com.example.commonlib.client.CommonRestClient;
+import org.springframework.stereotype.Service;
+
 @Service
-public class ProductService {
+public class ExampleService {
 
     private final CommonRestClient restClient;
 
-    public ProductService(CommonRestClient restClient) {
+    public ExampleService(CommonRestClient restClient) {
         this.restClient = restClient;
     }
 
-    public ProductDto getProductById(Long id) {
-        String url = "http://inventory-service/api/products/" + id;
-        return restClient.get(url, ProductDto.class);
+    public MyResponse getUserData(String userId) throws Exception {
+        String url = "https://api.example.com/users/" + userId;
+        return restClient.get(url, MyResponse.class);
     }
 }
 ```
 
----
+When used:
 
-## 🧾 Maven Dependency
-
-Once published to a repository (e.g., Maven Central or GitHub Packages), add the dependency:
-
-```xml
-<dependency>
-    <groupId>com.example</groupId>
-    <artifactId>common-rest-lib</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-If it’s a local JAR (for now), install it to your local Maven repo:
-
-```bash
-mvn clean install
-```
-
-Then include it in other projects as a normal dependency.
+* Retries and circuit breaking apply **automatically** based on your configuration.
+* If both are disabled, it performs a simple HTTP GET call.
 
 ---
 
-## 🧠 Key Concepts
+## 🚨 Exception Handling
 
-### RetryExecutor
+All remote call failures are wrapped into one of the following custom exceptions:
 
-* Implements **exponential backoff with jitter**
-* Ensures requests are retried gracefully without overloading the target service
+* `BadRequestException` → HTTP 400
+* `NotFoundException` → HTTP 404
+* `InternalServerErrorException` → HTTP 500
+* `RemoteServiceException` → Other unexpected or network-related errors
 
-### CircuitBreaker
-
-* Protects your system from cascading failures
-* Uses a **failure threshold** and **open-state duration** to control the flow
-
-### RemoteErrorResponse
-
-* Standardized structure for representing error responses from remote APIs
-
----
-
-## 🧩 Example RemoteErrorResponse
+Each exception contains a `RemoteErrorResponse` with details:
 
 ```json
 {
-  "timestamp": "2025-10-24T08:32:00Z",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Product not found",
-  "path": "/api/products/99"
+  "status": 500,
+  "error": "Remote Service Error",
+  "message": "Timeout occurred",
+  "path": "https://api.example.com/users/123"
 }
 ```
 
 ---
 
-## 🔮 Future Enhancements
+## 🧠 Design Highlights
 
-* Add **asynchronous support** using `WebClient`
-* Integrate **Micrometer metrics** for monitoring retry and circuit breaker stats
-* Optional integration with **Resilience4j** for advanced users
-* Add **bulkhead pattern** and **rate limiting**
+* Clean separation of **configuration**, **resilience**, and **exception mapping**
+* Compatible with Spring Boot’s `@ConfigurationProperties`
+* Supports **pluggable** retry and circuit breaker logic
+* Production-ready logging and error model
+
+---
+
+## 🧰 Future Enhancements
+
+* Add metrics integration (Micrometer)
+* Support for POST, PUT, DELETE with the same resilience layer
+* Option to configure time-based or error-rate-based circuit breaking
 
 ---
 
-## 🧑‍💻 Contributing
+## 🏁 Summary
 
-1. Fork this repository
-2. Create your feature branch: `git checkout -b feature/awesome-feature`
-3. Commit your changes: `git commit -m 'Add awesome feature'`
-4. Push to the branch: `git push origin feature/awesome-feature`
-5. Create a new Pull Request
-
----
+This library provides a **plug-and-play**, **configurable**, and **safe** way to call remote REST APIs with optional resilience.
+Simply include it as a dependency, define your YAML properties, and inject `CommonRestClient` — it handles the rest!

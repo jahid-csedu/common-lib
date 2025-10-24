@@ -15,9 +15,9 @@ public class RestClientProperties {
      */
     private int readTimeout = 5000;
 
-    private RetryProperties retryProperties = new RetryProperties();
+    private RetryProperties retry;
 
-    private CircuitBreakerProperties circuitBreakerProperties = new CircuitBreakerProperties();
+    private CircuitBreakerProperties circuitBreaker;
 
     public int getConnectionTimeout() {
         return connectionTimeout;
@@ -35,19 +35,19 @@ public class RestClientProperties {
         this.readTimeout = readTimeout;
     }
 
-    public RetryProperties getRetryProperties() {
-        return retryProperties;
+    public RetryProperties getRetry() {
+        return retry;
     }
 
-    public void setRetryProperties(RetryProperties retryProperties) {
-        this.retryProperties = retryProperties;
+    public void setRetry(RetryProperties retry) {
+        this.retry = retry;
     }
 
-    public CircuitBreakerProperties getCircuitBreakerProperties() {
-        return circuitBreakerProperties;
+    public CircuitBreakerProperties getCircuitBreaker() {
+        return circuitBreaker;
     }
 
-    public void setCircuitBreakerProperties(CircuitBreakerProperties circuitBreakerProperties) {
-        this.circuitBreakerProperties = circuitBreakerProperties;
+    public void setCircuitBreaker(CircuitBreakerProperties circuitBreaker) {
+        this.circuitBreaker = circuitBreaker;
     }
 }

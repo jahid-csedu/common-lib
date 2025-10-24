@@ -12,7 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
+
+import java.util.Objects;
+import java.util.concurrent.Callable;
 
 public class CommonRestClient {
 
@@ -30,12 +32,17 @@ public class CommonRestClient {
                 .requestFactory(factory)
                 .build();
 
-        this.retryExecutor = new RetryExecutor(props.getRetryProperties());
-        this.circuitBreaker = new CircuitBreaker(props.getCircuitBreakerProperties());
+        this.retryExecutor = props.getRetry() != null
+                ? new RetryExecutor(props.getRetry())
+                : null;
+
+        this.circuitBreaker = props.getCircuitBreaker() != null
+                ? new CircuitBreaker(props.getCircuitBreaker())
+                : null;
     }
 
     public <T> T get(String url, Class<T> responseType) throws Exception {
-        if (!circuitBreaker.allowRequest()) {
+        if (circuitBreaker != null && !circuitBreaker.allowRequest()) {
             log.warn("Circuit breaker is open - Skipping call");
             throw new RemoteServiceException(
                     new RemoteErrorResponse(
@@ -47,37 +54,39 @@ public class CommonRestClient {
             );
         }
 
+        Callable<T> call = () -> {
+            log.debug("Calling URL: {}", url);
+            T response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(responseType);
+
+            if (circuitBreaker != null) {
+                circuitBreaker.recordSuccess();
+            }
+
+            log.debug("Successful response from URL: {}", url);
+            return response;
+        };
+
         try {
-            return retryExecutor.executeWithRetry(() -> {
-                try {
-                    log.debug("Calling URL: {}", url);
-                    T response = restClient.get()
-                            .uri(url)
-                            .retrieve()
-                            .body(responseType);
-                    circuitBreaker.recordSuccess();
-                    log.debug("Successful response from URL: {}", url);
-                    return response;
-                } catch (HttpStatusCodeException ex) {
-                    circuitBreaker.recordFailure();
-                    log.error("Failed to call URL: {}", url);
-                    throw mapException(url, ex);
-                } catch (RestClientException ex) {
-                    circuitBreaker.recordFailure();
-                    log.error("Failed to call URL: {}", url);
-                    throw new RemoteServiceException(
-                            new RemoteErrorResponse(
-                                    500,
-                                    "Remote Service Error",
-                                    ex.getMessage(),
-                                    url
-                            )
-                    );
-                }
-            });
+            if (Objects.nonNull(retryExecutor)) {
+                return retryExecutor.executeWithRetry(call);
+            } else {
+                return call.call();
+            }
         } catch (Exception ex) {
-            log.error("Unexpected Error from URL: {}", url);
-            if (ex instanceof RemoteServiceException remoteServiceException) throw remoteServiceException;
+            recordCircuitBreakerFailure();
+            log.error("Error during call to URL: {}", url, ex);
+
+            if (ex instanceof HttpStatusCodeException statusEx) {
+                throw mapException(url, statusEx);
+            }
+
+            if (ex instanceof RemoteServiceException remoteServiceException) {
+                throw remoteServiceException;
+            }
+
             throw new RemoteServiceException(
                     new RemoteErrorResponse(
                             500,
@@ -86,6 +95,12 @@ public class CommonRestClient {
                             url
                     )
             );
+        }
+    }
+
+    private void recordCircuitBreakerFailure() {
+        if (circuitBreaker != null) {
+            circuitBreaker.recordFailure();
         }
     }
 
