@@ -11,30 +11,38 @@ public class RetryExecutor {
     private static final Logger log = LoggerFactory.getLogger(RetryExecutor.class);
 
     private final RetryProperties retryProperties;
+    private int currentAttempt = 0;
     private final Random random = new Random();
 
     public RetryExecutor(RetryProperties retryProperties) {
         this.retryProperties = retryProperties;
     }
 
+    public int getCurrentAttempt() {
+        return currentAttempt;
+    }
+
     public <T> T executeWithRetry(Callable<T> action) throws Exception {
         int attempts = 0;
+        Exception lastException = null;
 
-        while (true) {
+        while (attempts < retryProperties.getMaxAttempts()) {
+            currentAttempt = attempts + 1;
             try {
                 return action.call();
             } catch (Exception ex) {
+                lastException = ex;
                 attempts++;
                 if (attempts >= retryProperties.getMaxAttempts()) {
-                    log.warn("Max retry exceed");
-                    throw ex;
+                    break;
                 }
 
                 long delay = computeBackoffDelay(attempts);
-                log.debug("Call failed. Retry after {} milliseconds", delay);
                 Thread.sleep(delay);
             }
         }
+        assert lastException != null;
+        throw lastException;
     }
 
     private long computeBackoffDelay(int attempts) {

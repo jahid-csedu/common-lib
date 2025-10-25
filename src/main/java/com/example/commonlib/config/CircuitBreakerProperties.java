@@ -9,7 +9,7 @@ public class CircuitBreakerProperties {
     /**
      * Maximum duration in seconds the circuit will be in OPEN state
      */
-    private long openStateDuration = 10;
+    private long openDurationMs = 10;
 
     public int getFailureThreshold() {
         return failureThreshold;
@@ -19,11 +19,11 @@ public class CircuitBreakerProperties {
         this.failureThreshold = failureThreshold;
     }
 
-    public long getOpenStateDuration() {
-        return openStateDuration;
+    public long getOpenDurationMs() {
+        return openDurationMs;
     }
 
-    public void setOpenStateDuration(long openStateDuration) {
-        this.openStateDuration = openStateDuration;
+    public void setOpenDurationMs(long openDurationMs) {
+        this.openDurationMs = openDurationMs;
     }
 }

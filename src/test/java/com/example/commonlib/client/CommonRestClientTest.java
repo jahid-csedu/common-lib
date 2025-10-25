@@ -49,7 +49,7 @@ class CommonRestClientTest {
         // Enable circuit breaker configuration
         CircuitBreakerProperties cbProps = new CircuitBreakerProperties();
         cbProps.setFailureThreshold(3);
-        cbProps.setOpenStateDuration(2);
+        cbProps.setOpenDurationMs(2);
         props.setCircuitBreaker(cbProps);
 
         client = new CommonRestClient(props);
@@ -182,7 +182,7 @@ class CommonRestClientTest {
 
         CircuitBreakerProperties cbProps = new CircuitBreakerProperties();
         cbProps.setFailureThreshold(2);
-        cbProps.setOpenStateDuration(1); // 1 second
+        cbProps.setOpenDurationMs(1000); // 1 second
         props.setCircuitBreaker(cbProps);
 
         CommonRestClient cbClient = new CommonRestClient(props);

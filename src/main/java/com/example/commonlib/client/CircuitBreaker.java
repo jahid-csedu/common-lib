@@ -22,7 +22,7 @@ public class CircuitBreaker {
 
     public CircuitBreaker(CircuitBreakerProperties props) {
         this.failureThreshold = props.getFailureThreshold();
-        this.openStateDuration = Duration.ofSeconds(props.getOpenStateDuration());
+        this.openStateDuration = Duration.ofMillis(props.getOpenDurationMs());
     }
 
     public synchronized boolean allowRequest() {
