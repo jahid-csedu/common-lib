@@ -108,4 +108,17 @@ class CommonRestClientIntegrationTest {
 
         assertThrows(RemoteServiceException.class, () -> client.get(url, String.class));
     }
+
+    @Test
+    void testSuccessfulPostRequest() {
+        mockServer.enqueue(new MockResponse()
+                .setBody("Hello World")
+                .setResponseCode(200));
+
+        String url = mockServer.url("/success").toString();
+
+        String response = client.post(url, "Test Request", String.class);
+
+        assertEquals("Hello World", response);
+    }
 }

@@ -74,7 +74,7 @@ public class CommonRestClient {
         span.logStart(log, url);
         checkIfCircuitBreakerClosed(url);
 
-        Callable<T> call = () -> {
+        Callable<T> callable = () -> {
             int attempt = retryExecutor != null ? retryExecutor.getCurrentAttempt() : 1;
             span.logRetry(log, attempt, url);
             T response = restClient.get()
@@ -88,15 +88,53 @@ public class CommonRestClient {
             return response;
         };
 
-        return doCall(url, call, span);
+        return doCall(url, callable, span);
     }
 
-    private <T> T doCall(String url, Callable<T> call, RequestSpan span) {
+    /**
+     * Executes an HTTP POST request to the specified URL with the given request body and maps
+     * the response body to the specified response type.
+     *
+     * Supports optional retry and circuit breaker mechanisms based on configuration.
+     *
+     * @param url           the target URL
+     * @param requestBody   the body of the POST request (may be null)
+     * @param responseType  the type of the expected response
+     * @param <T>           the request body type
+     * @param <R>           the response body type
+     * @return the response body mapped to {@code responseType}
+     * @throws RemoteServiceException, BadRequestException, NotFoundException, InternalServerErrorException
+     *         for various HTTP and connection errors
+     */
+    public <T, R> R post(String url, T requestBody, Class<R> responseType) {
+        RequestSpan span = RequestSpan.start();
+        span.logStart(log, url);
+        checkIfCircuitBreakerClosed(url);
+
+        Callable<R> callable = () -> {
+            int attempt = retryExecutor != null ? retryExecutor.getCurrentAttempt() : 1;
+            span.logRetry(log, attempt, url);
+            R response = restClient.post()
+                    .uri(url)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(responseType);
+
+            recordCircuitBreakerSuccess();
+            span.logSuccess(log, url);
+
+            return response;
+        };
+
+        return doCall(url, callable, span);
+    }
+
+    private <T> T doCall(String url, Callable<T> callable, RequestSpan span) {
         try {
             if (retryExecutor != null) {
-                return retryExecutor.executeWithRetry(call);
+                return retryExecutor.executeWithRetry(callable);
             } else {
-                return call.call();
+                return callable.call();
             }
         } catch (Exception ex) {
             recordCircuitBreakerFailure();
