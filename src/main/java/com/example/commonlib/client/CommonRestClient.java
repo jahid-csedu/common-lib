@@ -129,6 +129,77 @@ public class CommonRestClient {
         return doCall(url, callable, span);
     }
 
+    /**
+     * Executes an HTTP PUT request to the specified URL with the given request body
+     * and maps the response body to the specified response type.
+     *
+     * Supports optional retry and circuit breaker mechanisms based on configuration.
+     *
+     * @param url           the target URL
+     * @param requestBody   the body of the PUT request (may be null)
+     * @param responseType  the type of the expected response
+     * @param <T>           the request body type
+     * @param <R>           the response body type
+     * @return the response body mapped to {@code responseType}
+     * @throws RemoteServiceException, BadRequestException, NotFoundException, InternalServerErrorException
+     *         for various HTTP and connection errors
+     */
+    public <T, R> R put(String url, T requestBody, Class<R> responseType) {
+        RequestSpan span = RequestSpan.start();
+        span.logStart(log, url);
+        checkIfCircuitBreakerClosed(url);
+
+        Callable<R> callable = () -> {
+            int attempt = retryExecutor != null ? retryExecutor.getCurrentAttempt() : 1;
+            span.logRetry(log, attempt, url);
+            R response = restClient.put()
+                    .uri(url)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(responseType);
+
+            recordCircuitBreakerSuccess();
+            span.logSuccess(log, url);
+
+            return response;
+        };
+
+        return doCall(url, callable, span);
+    }
+
+    /**
+     * Executes an HTTP DELETE request to the specified URL and maps the response body
+     * to the given response type.
+     *
+     * Supports optional retry and circuit breaker mechanisms based on configuration.
+     *
+     * @param url           the target URL
+     * @param responseType  the type of the expected response body
+     * @param <R>           the response type
+     * @return the response body mapped to {@code responseType}
+     * @throws RemoteServiceException, BadRequestException, NotFoundException, InternalServerErrorException
+     *         if the remote call fails or returns an error
+     */
+    public <R> R delete(String url, Class<R> responseType) {
+        RequestSpan span = RequestSpan.start();
+        span.logStart(log, url);
+        checkIfCircuitBreakerClosed(url);
+
+        Callable<R> call = () -> {
+            span.logRetry(log, retryExecutor != null ? retryExecutor.getCurrentAttempt() : 1, url);
+            R response = restClient.delete()
+                    .uri(url)
+                    .retrieve()
+                    .body(responseType);
+
+            recordCircuitBreakerSuccess();
+            span.logSuccess(log, url);
+            return response;
+        };
+
+        return doCall(url, call, span);
+    }
+
     private <T> T doCall(String url, Callable<T> callable, RequestSpan span) {
         try {
             if (retryExecutor != null) {

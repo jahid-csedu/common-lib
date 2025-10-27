@@ -121,4 +121,30 @@ class CommonRestClientIntegrationTest {
 
         assertEquals("Hello World", response);
     }
+
+    @Test
+    void testSuccessfulPutRequest() {
+        mockServer.enqueue(new MockResponse()
+                .setBody("Hello World")
+                .setResponseCode(200));
+
+        String url = mockServer.url("/success").toString();
+
+        String response = client.put(url, "Test Request", String.class);
+
+        assertEquals("Hello World", response);
+    }
+
+    @Test
+    void testSuccessfulDeleteRequest() {
+        mockServer.enqueue(new MockResponse()
+                .setBody("Hello World")
+                .setResponseCode(200));
+
+        String url = mockServer.url("/success").toString();
+
+        String response = client.delete(url, String.class);
+
+        assertEquals("Hello World", response);
+    }
 }
